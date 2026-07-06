@@ -29,6 +29,26 @@ Everything before this section made you *know* things. This section makes you *s
     ---
     The canonical questions mapped to this site's case studies, and a practice regimen that actually builds the skill.
 
+-   **[Drills](drills.md)**
+
+    ---
+    ~60 active-recall questions with click-to-reveal answers — retrieval practice, section by section.
+
+-   **[The Arcade](arcade.md)** 🎮
+
+    ---
+    Three games with saved high scores: Estimation Duel, Name That Failure, and Faster or Slower.
+
+-   **[Study plans & tracker](study-plans.md)**
+
+    ---
+    48-hour, 3-week, and 12-week plans, plus a full-site progress tracker that remembers your checkmarks.
+
+-   **[AI practice harness](../reference/ai-harness.md)**
+
+    ---
+    Mock interviews, drills, and design grading from Claude models grounded in this site's own rubrics.
+
 </div>
 
 ## If you are cramming

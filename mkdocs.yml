@@ -45,6 +45,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/progress.js
+  - javascripts/arcade.js
 
 markdown_extensions:
   - abbr
@@ -173,6 +174,7 @@ nav:
       - Cheat sheets: interviews/cheatsheets.md
       - Question bank & practice: interviews/question-bank.md
       - Drills: interviews/drills.md
+      - The Arcade: interviews/arcade.md
       - Study plans & tracker: interviews/study-plans.md
   - Case Studies:
       - case-studies/index.md
