@@ -1,0 +1,44 @@
+# IaC & GitOps
+
+Infrastructure clicked into existence is infrastructure nobody can rebuild — a one-of-a-kind sculpture whose sculptor left the company. Infrastructure as Code is the decision to give infrastructure the software lifecycle: reviewed diffs, version history, reproducibility, rollback. GitOps takes the second step: it applies the [reconciliation pattern](kubernetes-architecture.md) to deployment itself — git holds desired state, controllers converge reality onto it, forever. Between them sits one genuinely deep systems problem (state) and one organizational discipline (everything through the pipeline), and interviews probe both.
+
+## Terraform's model: desired state, actual state, and the diff
+
+Declarative IaC (Terraform/OpenTofu, Pulumi, CloudFormation) is a three-body system: **config** (what you want), **state file** (what Terraform believes it manages), and **reality** (what the cloud actually has). `plan` diffs all three and proposes actions; `apply` executes them. Everything interesting lives in the gaps:
+
+- **The state file is a [coordination point](../distributed/coordination.md)** — it maps config to real resource IDs, so it's simultaneously precious (lose it and Terraform forgets it owns anything), sensitive (outputs and resource attributes leak secrets into it — treat state like a credential store: encrypted backend, tight access), and contended (**state locking** exists because two concurrent applies interleaving writes is [the lost-update anomaly](../data/transactions.md) with production infrastructure as the row).
+- **Drift** is the gap between state and reality: someone click-fixed a security group at 2 a.m., and now the next `apply` will *silently revert the fix* — the classic incident where the remediation un-happens a week later. The discipline: scheduled `plan` runs as drift detection (alert on non-empty diffs), and a cultural rule that emergency manual changes get *backported to code the next morning* (with a documented [break-glass procedure](secrets-identity.md), because "everything through git" needs an honest exception path).
+- **The plan-approval race**: a plan approved Monday and applied Friday executes against a world that changed in between — plans are [optimistic concurrency](../data/transactions.md) without the version check unless your tooling re-plans at apply time. Mature pipelines apply-immediately-after-plan or re-verify.
+
+**Blast radius is a state-topology decision.** One state file = one lock, one apply, one failure domain — a mono-state where a typo can propose destroying prod databases alongside a dev DNS record. The pattern: **split states** by environment and domain (prod/network, prod/data, staging/*) with separate credentials per environment — [cells](../foundations/reliability-availability.md) for infrastructure. Add prevention layers for the irreversible: `prevent_destroy` on stateful resources, deletion protection at the cloud layer, and **policy-as-code** gates in CI (OPA/Sentinel: "no public buckets, no unencrypted volumes, no 0.0.0.0/0 ingress" as build failures — [the constraint-as-backstop philosophy](../data/transactions.md), applied to infrastructure).
+
+The review artifact is the **plan output in the PR** — infrastructure's equivalent of a diff, and the reason IaC review works at all: reviewers approve *actions* ("3 to add, 1 to change, 0 to destroy"), not intentions.
+
+## GitOps: reconciliation applied to deployment
+
+GitOps is a precise pattern, not a vibe (and defining it precisely is itself interview signal): **git repositories hold the complete desired state; in-cluster controllers (Argo CD, Flux) continuously reconcile the live system toward it.** The properties fall out mechanically:
+
+- **Pull, not push** — the cluster *pulls* from git; your [CI system never holds cluster credentials](cicd.md). That inverts the trust relationship: instead of the pipeline (the [most-attacked component](cicd.md)) having god-rights everywhere, clusters have read-rights to a repo. Security teams sign off on GitOps for this line alone.
+- **Drift self-heals** — the controller [reconciles continuously](kubernetes-architecture.md), so manual cluster changes get reverted by design (the same behavior that's a *bug* in unattended Terraform is a *feature* here, because the loop runs in seconds, not next-apply — surprises don't age).
+- **Audit and rollback come free** — "who changed prod, when, and why" is `git log`; rollback is `git revert` (with the honest caveat: reverting the manifest doesn't revert [the data the new version wrote](deployments.md) — the compatibility law still governs).
+
+| | CI-push deploys | GitOps pull |
+|---|---|---|
+| Cluster credentials | live in CI | never leave the cluster |
+| Drift | undetected until next deploy | reconciled continuously |
+| Audit trail | pipeline logs | git history |
+| Rollback | re-run old pipeline | `git revert` |
+| Mental model | imperative: "do the deploy" | declarative: "this is prod" |
+
+The operational fine print: **secrets can't live in git** (sealed-secrets, SOPS, or external-secrets operators pulling from [Vault](secrets-identity.md) — the desired state references secrets, never contains them); **sync waves and health checks** order dependent rollouts (database before app; "healthy" defined per-resource, or Argo's UI shows eternally-`Progressing` apps that nobody can explain); and **progressive delivery** plugs in as controllers too ([Argo Rollouts](deployments.md): canary analysis as a reconciled resource).
+
+!!! ops "DevOps lens"
+    The operational canon: **state backend care** (versioned, backed-up, locked — losing state is losing Terraform's memory; the recovery is `import` archaeology, priced in weekends), **provider/module version pinning** (an unpinned provider upgrade is an [unplanned fleet-wide change](../foundations/reliability-availability.md) riding someone's Tuesday apply — pin everything, upgrade in waves), **module upgrade campaigns** (the shared VPC module's breaking change × 40 consuming states = a program, not a PR), and the **Argo incident genres**: the app stuck `Progressing` (health check definitions), the sync storm after a base-manifest change (one commit fanning out to 200 apps — [config blast radius](../networking/proxies-gateways.md) again; stage your base changes), and the out-of-band change fight (controller reverting a human's hotfix mid-incident — know the pause-reconciliation button *and* the policy for using it). And drift detection isn't paranoia: run it scheduled, alert on diffs, treat persistent drift as a process failure to fix, not noise to mute.
+
+!!! staff "Staff+ altitude"
+    Markers: (1) **Repo/state topology is Conway's law in Terraform** — per-team states with platform-owned shared modules (network, cluster, database factories) is the shape that scales; the platform team ships *modules as products* (versioned, documented, with deprecation policies — [the paved road](../caching/failure-modes.md), infrastructure edition) and reviews *policy*, not every PR. (2) **Policy-as-code is how governance scales** — one Staff engineer encoding "no public buckets" into CI protects 400 repos forever; the alternative is 400 reviews that each might miss it. (3) **The break-glass procedure is part of the design** — documented, audited, auto-expiring emergency access, because "everything through git" without an exception path means incidents get *slower* and people route around the system permanently. (4) **Ephemeral environments** (spin a full stack per PR from the same modules, destroy on merge) are the maturity test of your IaC: if you can't create-and-destroy from code alone, you don't have infrastructure as code — you have infrastructure with code-flavored documentation.
+
+!!! interview "In the interview"
+    Define GitOps precisely when it comes up — *"git as the complete desired state, in-cluster controllers reconciling toward it continuously; pull-based, so CI never holds cluster creds; drift self-heals; audit is git log"* — most candidates hand-wave it, and precision here is cheap distinction. The probes: *"how do you deploy infrastructure changes safely?"* (plan-as-review-artifact + policy gates + split states for blast radius + staged applies per environment — [the deployment-strategy philosophy](deployments.md) applied to Terraform); *"what's hard about Terraform at scale?"* (state: locking, drift, secrets-in-state, topology — answering with *state* rather than *HCL syntax* is the practitioner tell); *"someone hotfixed prod manually — what happens?"* (Terraform: silently reverted at next apply — hence drift detection and backport culture; GitOps: reverted in seconds — hence pause-button policy; both answers show you've *lived* the pattern, not just diagrammed it).
+
+**Next:** [Secrets & identity](secrets-identity.md) — from "where do we hide the password" to the endgame where there's no password at all.

@@ -1,0 +1,41 @@
+# Observability Fundamentals
+
+Monitoring answers questions you thought to ask in advance ("is CPU high?"). **Observability** is the property of a system that lets you answer questions you *didn't* anticipate — "why are Tuesday's uploads from Android users in Brazil slow?" — from telemetry you're already collecting. The distinction matters because [gray failures and metastable states](../distributed/failure-modes.md) are, by definition, the failures you didn't predict; a system observable only along predicted axes is a system whose novel failures get debugged by guesswork at 3 a.m.
+
+## The three pillars, honestly appraised
+
+**Metrics** — numbers aggregated over time (counters, gauges, histograms). Cheap to store, fast to query, the backbone of [alerting](alerting.md) and dashboards. Their structural limit: aggregation *destroys the individual* — the metric says p99 is 2 s; it cannot say *which* requests or *why*. ([Full page](metrics.md).)
+
+**Logs** — discrete events with full detail. Maximum context per event, priced accordingly: at scale, [log volume rivals product traffic](logging.md), and finding the relevant event is a search problem you must design. ([Full page](logging.md).)
+
+**Traces** — the causal chain of one request across services: what called what, in what order, taking how long. The only pillar that answers "*where* did this request's 2 seconds go?" in a [fan-out architecture](../foundations/latency-throughput.md). ([Full page](tracing.md).)
+
+The senior mental model isn't three silos — it's a **workflow**: metrics tell you *that* something's wrong (cheap, always-on, alertable) → traces tell you *where* in the topology → logs tell you *what exactly* happened at that spot. The connective tissue is **correlation**: trace IDs stamped into logs, [exemplars](metrics.md) linking metric spikes to sample traces. Telemetry that can't cross-reference is three separate haystacks; telemetry that can is one needle-finding machine. (The industry's convergence point for emitting all of it is **OpenTelemetry** — one SDK, one wire protocol, vendor-neutral; the days of instrumenting thrice are over, and saying so is current.)
+
+## Cardinality: the master constraint
+
+The economics of all telemetry reduce to one word. **Cardinality** = the number of distinct label/attribute combinations. A metric labeled by `endpoint` (50) × `status` (10) × `region` (5) is 2,500 time series — fine. Add `user_id` (10 million) and you've minted **25 billion series** — congratulations, your monitoring bill now exceeds your product's, right before the monitoring system OOMs.
+
+The rule with no exceptions: **metrics get bounded labels** (endpoint, status, region — enums, effectively); **unbounded identifiers** (user ID, request ID, session, URL-with-params) **belong in logs and traces**, which are built for per-event detail. Cardinality explosions are the [hot-key problem](../caching/failure-modes.md) of observability — and like hot keys, they arrive suddenly (one deploy adding one label) and take down the system that was supposed to watch the systems. Every observability platform's pricing model, every Prometheus OOM, every "why is Datadog $2M" conversation is this paragraph.
+
+## Instrumentation is design, not decoration
+
+What to emit is decided *when you design the system* — retrofits are archaeology:
+
+- **Every request-path component** emits the [RED trio](metrics.md) (rate, errors, duration-as-histogram); **every resource** emits [USE](metrics.md) (utilization, saturation, errors). These two acronyms cover 90% of "what should we measure."
+- **Boundaries get the density**: ingress, egress, [every queue](../messaging/async-fundamentals.md) (depth *and age*), [every pool](../networking/fundamentals.md) (in-use, waiters), [every cache](../caching/fundamentals.md) (hit rate by class), [every retry and breaker](../distributed/resilience.md) (the anti-cascade toolkit is only tunable if it's visible).
+- **Context propagates**: [trace context](tracing.md) flows through every hop — HTTP headers, [message metadata](../messaging/async-fundamentals.md), [async boundaries](../messaging/event-driven.md) — because a trace that dies at the first queue answers half the question. This is a *design* requirement (which header, which library, enforced where?), not a tooling checkbox.
+- **Events carry structure**: [logs are JSON with schemas](logging.md), not printf poetry; the difference between "grep and pray" and "query and know."
+
+The [observer-effect](../foundations/estimation.md) honesty: telemetry is load. Metrics scrapes, log shipping, trace export — [the pipeline watching 10k hosts is itself a big-data system](../case-studies/metrics-system.md), and instrumentation inside hot loops has a latency price. Budget observability like any workload: it's typically 5–15% of infrastructure spend, and the Staff+ callout below has opinions about both directions of error.
+
+!!! ops "DevOps lens"
+    The meta-discipline: **observe the observability**. The monitoring stack is tier-0 during incidents — exactly when everything else is on fire, it must not be ([and it must not live only in the region it watches](../devops/multi-region.md)). Practices: independent health-checking of the monitoring path (a dead-man's-switch alert that fires when telemetry *stops* — silence is the scariest signal), capacity headroom on the telemetry pipeline (incident traffic is bursty: error storms 100× your log volume [exactly when you need logs](logging.md) — [backpressure and sampling policies](logging.md) decided in advance), and cardinality budgets enforced in CI (a linter on new metric labels is cheaper than the 2 a.m. OOM). And the cultural practice that beats all tooling: **dashboards are read during calm** — the team that reviews its golden signals weekly recognizes "weird" instantly at 3 a.m.; the team that only opens Grafana during incidents is doing archaeology in the dark.
+
+!!! staff "Staff+ altitude"
+    Markers: (1) **Standardize the telemetry contract** — one SDK (OTel), mandatory labels (service, version, region), naming conventions, and propagation headers, shipped in the [paved road](../caching/failure-modes.md); heterogeneous telemetry is why "we have three dashboards that disagree" is a sentence that exists. (2) **Own the cost-vs-fidelity dial explicitly** — sampling rates, retention tiers, and cardinality budgets are *policy*, revisited quarterly, with the two failure modes named: gold-plated telemetry nobody queries (15% of infra spend on write-only data) and the under-instrumented system where every incident starts with deploying new logging (each incident 2× longer). (3) **Observability-driven design review**: "how will we know this is working? show me the dashboard sketch" belongs next to the [failure-modes question](../distributed/failure-modes.md) in every review — a design that can't describe its own health signals isn't finished. (4) The deepest marker: **treating telemetry as the system's API to its operators** — versioned, documented, with breaking-change discipline; the 3 a.m. responder is a *user*, and the dashboards are their UX.
+
+!!! interview "In the interview"
+    The reflex this page installs: every design gets its observability sentence, unprompted — *"each service emits RED with histograms; queues expose depth and age; trace context propagates end-to-end including through the queue; logs are structured with trace IDs, so I can go metric-spike → trace → exact log line."* One breath, and you've answered "how do you debug this?" before it was asked. Probes: *"monitoring vs. observability?"* (predicted questions vs. unanticipated ones — then the workflow: metrics *that*, traces *where*, logs *what*); *"what would you measure?"* (RED for services, USE for resources, boundaries with density — acronyms with reasons, not lists); *"what's cardinality and why care?"* (the 25-billion-series arithmetic, plus the rule: bounded labels in metrics, identifiers in traces/logs). The differentiator is the *correlation* story — most candidates name three pillars; few describe the trace-ID thread that sews them into one debugging motion.
+
+**Next:** [Metrics & Prometheus](metrics.md) — the pull model, the two acronyms that cover ninety percent of measurement, and the histogram fine print your p99 depends on.

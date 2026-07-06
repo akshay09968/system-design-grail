@@ -1,0 +1,90 @@
+/* ── The System Design Grail: identity ─────────────────────────────── */
+
+:root {
+  --grail-gold: #f0b429;
+  --grail-teal: #00bcd4;
+  --md-admonition-icon--ops: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.7 19L13.6 9.9C14.5 7.6 14 4.9 12.1 3C10.1 1 7.1 0.6 4.7 1.7L9 6L6 9L1.6 4.7C0.4 7.1 0.9 10.1 2.9 12.1C4.8 14 7.5 14.5 9.8 13.6L18.9 22.7C19.3 23.1 19.9 23.1 20.3 22.7L22.6 20.4C23.1 20 23.1 19.3 22.7 19Z"/></svg>');
+  --md-admonition-icon--interview: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM6 9h12v2H6zm0-4h12v2H6zm0 8h8v2H6z"/></svg>');
+  --md-admonition-icon--staff: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5m14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>');
+}
+
+/* ── Custom admonition: Staff+ altitude (purple, crown) ─────────────── */
+.md-typeset .admonition.staff,
+.md-typeset details.staff {
+  border-color: #ab47bc;
+}
+.md-typeset .staff > .admonition-title,
+.md-typeset .staff > summary {
+  background-color: rgba(171, 71, 188, 0.1);
+}
+.md-typeset .staff > .admonition-title::before,
+.md-typeset .staff > summary::before {
+  background-color: #ab47bc;
+  -webkit-mask-image: var(--md-admonition-icon--staff);
+          mask-image: var(--md-admonition-icon--staff);
+}
+
+/* Links: primary is black, so give links an explicit readable color */
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: #ffc94d;
+  --md-accent-fg-color: #ffd970;
+}
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: #a86500;
+  --md-accent-fg-color: #d98200;
+}
+
+/* ── Custom admonition: DevOps lens (gold, wrench) ──────────────────── */
+.md-typeset .admonition.ops,
+.md-typeset details.ops {
+  border-color: var(--grail-gold);
+}
+.md-typeset .ops > .admonition-title,
+.md-typeset .ops > summary {
+  background-color: rgba(240, 180, 41, 0.1);
+}
+.md-typeset .ops > .admonition-title::before,
+.md-typeset .ops > summary::before {
+  background-color: var(--grail-gold);
+  -webkit-mask-image: var(--md-admonition-icon--ops);
+          mask-image: var(--md-admonition-icon--ops);
+}
+
+/* ── Custom admonition: In the interview (teal, transcript bubble) ──── */
+.md-typeset .admonition.interview,
+.md-typeset details.interview {
+  border-color: var(--grail-teal);
+}
+.md-typeset .interview > .admonition-title,
+.md-typeset .interview > summary {
+  background-color: rgba(0, 188, 212, 0.1);
+}
+.md-typeset .interview > .admonition-title::before,
+.md-typeset .interview > summary::before {
+  background-color: var(--grail-teal);
+  -webkit-mask-image: var(--md-admonition-icon--interview);
+          mask-image: var(--md-admonition-icon--interview);
+}
+
+/* ── Typography & tables ────────────────────────────────────────────── */
+.md-typeset h1 {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.md-typeset h2 {
+  font-weight: 700;
+}
+.md-typeset table:not([class]) {
+  font-size: 0.72rem;
+}
+.md-header__title {
+  font-weight: 700;
+}
+
+/* Card grids on index pages */
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.4rem;
+}
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--grail-gold);
+}

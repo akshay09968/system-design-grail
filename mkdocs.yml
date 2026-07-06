@@ -1,0 +1,199 @@
+site_name: The System Design Grail
+site_description: >-
+  System design mastery from a DevOps perspective — deep explanations,
+  production war stories, and interview-ready frameworks in one place.
+site_url: https://akshay09968.github.io/system-design-grail/
+repo_url: https://github.com/akshay09968/system-design-grail
+repo_name: system-design-grail
+docs_dir: content
+use_directory_urls: false
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font: false
+  palette:
+    - scheme: slate
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/progress.js
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: "¶"
+      toc_depth: 3
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      clickable_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Foundations:
+      - foundations/index.md
+      - The DevOps lens: foundations/devops-lens.md
+      - Thinking in systems: foundations/thinking-in-systems.md
+      - Scalability: foundations/scalability.md
+      - Reliability & availability: foundations/reliability-availability.md
+      - Latency & throughput: foundations/latency-throughput.md
+      - CAP & PACELC: foundations/cap-pacelc.md
+      - Consistency models: foundations/consistency-models.md
+      - Back-of-envelope estimation: foundations/estimation.md
+  - Networking & Edge:
+      - networking/index.md
+      - Networking fundamentals: networking/fundamentals.md
+      - DNS: networking/dns.md
+      - "HTTP: 1.1 → 2 → 3": networking/http.md
+      - API styles: networking/apis.md
+      - Load balancing: networking/load-balancing.md
+      - Proxies & API gateways: networking/proxies-gateways.md
+      - CDN: networking/cdn.md
+  - Data & Storage:
+      - data/index.md
+      - Storage engines: data/storage-engines.md
+      - SQL at scale: data/sql-at-scale.md
+      - The NoSQL landscape: data/nosql.md
+      - Replication: data/replication.md
+      - Partitioning & sharding: data/partitioning.md
+      - Transactions & isolation: data/transactions.md
+      - Distributed transactions: data/distributed-transactions.md
+      - Object, block & file storage: data/object-storage.md
+      - Analytics & data pipelines: data/analytics.md
+  - Caching:
+      - caching/index.md
+      - Caching fundamentals: caching/fundamentals.md
+      - Redis deep dive: caching/redis.md
+      - Cache failure modes: caching/failure-modes.md
+  - Messaging & Streaming:
+      - messaging/index.md
+      - Async fundamentals: messaging/async-fundamentals.md
+      - Kafka deep dive: messaging/kafka.md
+      - Delivery semantics & idempotency: messaging/delivery-semantics.md
+      - Event-driven architecture: messaging/event-driven.md
+  - Distributed Systems:
+      - distributed/index.md
+      - Failure modes & fallacies: distributed/failure-modes.md
+      - Time & ordering: distributed/time-ordering.md
+      - Consensus: distributed/consensus.md
+      - Coordination, locks & leases: distributed/coordination.md
+      - Resilience patterns: distributed/resilience.md
+      - Rate limiting: distributed/rate-limiting.md
+  - DevOps & Platform:
+      - devops/index.md
+      - Linux fundamentals for scale: devops/linux-fundamentals.md
+      - Containers deep dive: devops/containers.md
+      - Kubernetes architecture: devops/kubernetes-architecture.md
+      - Kubernetes workloads & traffic: devops/kubernetes-workloads.md
+      - Kubernetes autoscaling & capacity: devops/kubernetes-autoscaling.md
+      - Service mesh: devops/service-mesh.md
+      - CI/CD as a system: devops/cicd.md
+      - Deployment strategies: devops/deployments.md
+      - IaC & GitOps: devops/iac-gitops.md
+      - Secrets & identity: devops/secrets-identity.md
+      - Cloud networking: devops/cloud-networking.md
+      - Multi-region & DR: devops/multi-region.md
+      - Cost & capacity: devops/cost-capacity.md
+  - Observability & SRE:
+      - observability/index.md
+      - Observability fundamentals: observability/fundamentals.md
+      - Metrics & Prometheus: observability/metrics.md
+      - Logging at scale: observability/logging.md
+      - Distributed tracing: observability/tracing.md
+      - SLOs & error budgets: observability/slos.md
+      - Alerting design: observability/alerting.md
+      - Incident management: observability/incidents.md
+      - Chaos engineering: observability/chaos.md
+  - Security:
+      - security/index.md
+      - Authentication & authorization: security/authn-authz.md
+      - Defense in depth: security/defense-in-depth.md
+  - Interview Playbook:
+      - interviews/index.md
+      - The framework: interviews/framework.md
+      - Requirements & estimation: interviews/requirements-estimation.md
+      - Communication & levels: interviews/communication.md
+      - Cheat sheets: interviews/cheatsheets.md
+      - Question bank & practice: interviews/question-bank.md
+      - Drills: interviews/drills.md
+      - Study plans & tracker: interviews/study-plans.md
+  - Case Studies:
+      - case-studies/index.md
+      - URL shortener: case-studies/url-shortener.md
+      - Rate limiter: case-studies/rate-limiter.md
+      - Notification system: case-studies/notifications.md
+      - Chat system: case-studies/chat.md
+      - News feed: case-studies/news-feed.md
+      - Video streaming: case-studies/video-streaming.md
+      - Typeahead: case-studies/typeahead.md
+      - Web crawler: case-studies/web-crawler.md
+      - Proximity & ride-hailing: case-studies/proximity.md
+      - Payment system: case-studies/payments.md
+      - Key-value store: case-studies/kv-store.md
+      - "DevOps special: metrics system": case-studies/metrics-system.md
+      - "DevOps special: log pipeline": case-studies/log-pipeline.md
+      - "DevOps special: CI/CD platform": case-studies/cicd-platform.md
+      - "DevOps special: job scheduler": case-studies/job-scheduler.md
+      - "DevOps special: feature flags": case-studies/feature-flags.md
+  - Reference:
+      - reference/index.md
+      - Glossary: reference/glossary.md
+      - Resources: reference/resources.md
+      - AI practice harness: reference/ai-harness.md

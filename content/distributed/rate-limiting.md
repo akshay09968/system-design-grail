@@ -1,0 +1,51 @@
+# Rate Limiting
+
+A rate limiter is the front door's contract: *here is what you may ask of me, per unit of time.* It's four tools wearing one trench coat — capacity protection (the [load-shedding](resilience.md) family's precision instrument), fairness enforcement (one tenant can't eat the fleet), abuse defense (credential stuffing meets a wall), and a *billing surface* (pricing tiers are just differently-sized buckets). It's also the single most-assigned system design interview question in existence — "design a rate limiter" — so this page does double duty: the concepts, arranged so the case study falls out the bottom.
+
+## What gets limited, and where
+
+Limits attach to **keys**: per API key/user (fairness, billing), per IP (abuse — with the honest caveat that NAT and CGNAT put thousands of humans behind one IP), per tenant (noisy neighbors, [the sharding conversation's](../data/partitioning.md) front-door twin), per endpoint (`POST /search` costs 100× `GET /health` — expensive operations get their own budgets), and globally (the fleet's total capacity, guarded).
+
+Placement is layered, [like every protection](../networking/proxies-gateways.md): **coarse and cheap at the edge** (gateway/LB: per-IP and per-key limits, rejecting in microseconds before any real work), **precise and business-aware in the service** (per-tenant-per-operation quotas, cost-based limits). Both, not either.
+
+## The algorithms
+
+**Fixed window** — a counter per key per window (`user42:10:04 → 17/100`). Trivially simple, O(1), and possessed of the famous flaw: **boundary bursts** — 100 requests at 10:04:59 and 100 more at 10:05:01 is 200 requests in two seconds, all "within limits." (Naming this flaw unprompted is the standard depth check.)
+
+**Sliding window log** — store every request's timestamp; count the last 60 s exactly. Perfectly accurate, memory-priced: O(requests) per key — the [Redis sorted-set pattern](../caching/redis.md) makes it easy, and expensive keys make it painful at scale.
+
+**Sliding window counter** — the pragmatic hybrid: keep this window's and last window's counters; estimate the sliding count as `current + previous × overlap%`. Two integers per key, boundary bursts smoothed to a small approximation error. This (Cloudflare-style) is what most production edge limiters actually run.
+
+**Token bucket — the default answer.** A bucket holds up to *capacity* tokens, refilling at *rate* per second; each request spends one (or more — see cost-based below). What it encodes is exactly the contract products want: **sustained rate + burst allowance** ("100 req/s steady, bursts to 500") — because real clients are bursty and punishing burstiness per-request is user-hostile. The implementation elegance worth saying aloud: no timers — *lazy refill*: on each request, `tokens = min(capacity, tokens + elapsed × rate)`, then spend. Two floats per key.
+
+**Leaky bucket** — requests queue; the queue drains at a fixed rate. The distinction it teaches: **shaping** (smooth the output — leaky) vs. **policing** (reject the excess — token). Shaping suits things that *must* flow steadily (writes to a fragile downstream); policing suits front doors. (GCRA, beloved of the mathematically tidy, is the timer-free equivalent.)
+
+**Concurrency limits, the cousin** — cap *in-flight* requests rather than rate (a semaphore: 50 concurrent, period). Often the better protector, because damage is done by *simultaneous* work, not arrival rate ([Little's law](../foundations/latency-throughput.md) again: concurrency is the resource). Adaptive versions (gradient/AIMD on observed latency) are the frontier: the limit *discovers* capacity instead of being guessed.
+
+## The distributed problem
+
+One node's token bucket is a solved problem; **N gateway nodes are the problem** — local limits × N nodes = N× the intended global limit. The solutions ladder, cheapest first:
+
+1. **Divided quota** — each node enforces limit/N locally. Zero coordination; breaks under uneven load balancing and autoscaling (N changes!). Fine for coarse abuse caps, wrong for billing.
+2. **Centralized store** — the standard: Redis holds the buckets; a **Lua script** does read-refill-spend-respond atomically ([single-threaded atomicity](../caching/redis.md) earning its keep — no race between check and decrement). Costs ~0.5–1 ms per check and puts Redis on the critical path (see the failure question, below). Scale by [sharding buckets across a cluster by key](../data/partitioning.md) — rate-limit keys shard perfectly.
+3. **Local counters, async sync** — each node enforces locally, reconciling with the shared store every ~100 ms. Latency of option 1, accuracy approaching option 2, bounded overshoot in between (worst case: N × sync-interval × rate of excess). The pragmatic hybrid most large fleets converge on.
+4. **Ownership routing** — each key's bucket lives on exactly one node ([partition ownership: route, don't lock](coordination.md)); the LB's [consistent hashing](../data/partitioning.md) sends `user42`'s checks to `user42`'s owner. Exact *and* fast, priced in routing complexity.
+
+## Semantics: how to say no
+
+Rejection is an API with manners: **429** (or 503 for capacity-shedding — semantically "my problem" vs. "your quota"), a **`Retry-After`** header (well-behaved SDKs honor it — you're *scheduling* the retry wave instead of [receiving it as a stampede](resilience.md)), and rate-limit headers (`remaining`, `reset`) so clients can self-pace (good clients run their own token buckets against your advertised budget — [backpressure by contract](../messaging/async-fundamentals.md)). Two operational modes that separate the experienced: **shadow mode first** — deploy new limits observing-only, log would-be rejections, *then* enforce (the number of "legitimate" clients quietly doing 50× your intended limit is always a surprise); and **soft limits** — warn/throttle-lightly before the hard wall, so paying customers hit friction before cliffs.
+
+## The failure question (they will ask it)
+
+Redis is down; the limiter can't answer. **Fail open** (allow everything — availability preserved, protection gone) or **fail closed** (reject everything — protection preserved, self-inflicted outage)? The grown-up answer is **per limit class**: abuse/auth limits fail *closed-ish* (a login-bruteforce limiter that fails open is a security incident; degraded mode: aggressive local per-node caps), capacity/fairness limits fail *open* (never let the safety mechanism cause the outage it exists to prevent — [the health-check lesson](../networking/load-balancing.md) in new clothes), with local-limiter fallback softening both. Stating "fail open for capacity, fail closed for auth, local fallback either way" is a complete senior answer in twelve words.
+
+!!! ops "DevOps lens"
+    Rate limiters are *observability goldmines* if instrumented: **rejection rate by key class** (spikes = abuse, a broken client in a retry loop, or your own [internal retry storm](resilience.md) arriving at the front door disguised as a customer — the diagnostic is *which keys*: one key = broken client; thousands = incident or attack), **top-limited keys** (your next support ticket, pre-written), **limiter latency** (it's on every request's path — its p99 is in your p99), and **would-be-rejections in shadow mode** (the tuning dataset). Set limits *from data* — p99.9 of legitimate per-key traffic × headroom, not round numbers from a meeting. And keep the **emergency clamp** rehearsed: a config-deployable global limit reduction is one of the fastest incident mitigations that exists ("shed the crawlers, save checkout" as one config push — [priority shedding's](resilience.md) front-door lever).
+
+!!! staff "Staff+ altitude"
+    Markers: (1) **Limits are product surface** — tiers, SLAs, and billing are bucket parameters; the limiter's metering feeds revenue, which means limit changes are *pricing changes* with stakeholders, and the gateway team is quietly running a monetization platform ([the API-gateway-as-tollbooth](../networking/proxies-gateways.md) thesis, cashed). (2) **Fairness is a policy choice** — under contention, per-key fair queuing beats FIFO (one whale's burst shouldn't starve a thousand minnows); deciding *what fairness means* (per-user? per-tenant? weighted by tier?) is a business decision to extract from engineering folklore and write down. (3) **Cost-based limiting is the maturity step** — charging tokens per *estimated operation cost* (query complexity, [GraphQL depth](../networking/apis.md), scan bytes) rather than per request stops the cheap-requests-expensive-requests arbitrage; the token bucket doesn't change, the pricing of a request does. (4) **Governance**: limits are config with fleet-wide blast radius — versioned, canaried, shadow-tested, owned ([config-push discipline](../networking/proxies-gateways.md), fourth appearance, still true).
+
+!!! interview "In the interview"
+    The "design a rate limiter" skeleton, 90 seconds: *"Requirements: per-API-key, 100 rps sustained with bursts, 10M keys, <1 ms overhead, multi-gateway. Algorithm: token bucket — encodes sustained+burst naturally; lazy refill, two floats per key. [Memory math](../foundations/estimation.md): 10M × ~40 B ≈ 400 MB — one Redis node holds it. Enforcement: Lua script for atomic check-refill-spend; shard by key if hot. Distributed: central Redis for accuracy; if the 1 ms hurts, local counters with 100 ms async sync, bounded overshoot. Failure: capacity limits fail open with local fallback caps; auth limits fail closed. Semantics: 429 + Retry-After + remaining headers; shadow mode before enforcement."* Every sentence is a decision with a reason — that's the whole game. Probes to expect: *"why not fixed window?"* (boundary burst — 2× at the seam); *"exact global accuracy?"* (ownership routing via consistent hashing, or admit bounded overshoot and defend it — precision costs a hop); *"what if Redis dies?"* (the per-class fail-open/closed answer); *"how do you pick the numbers?"* (shadow mode + p99.9 of legitimate traffic — data, not vibes).
+
+**Section complete.** The distributed foundations are laid. Next: [DevOps & Platform](../devops/index.md) — the crown-jewel section, where your home-turf knowledge becomes interview artillery.

@@ -1,0 +1,53 @@
+# Async Fundamentals
+
+A queue is a shock absorber: it decouples two components *in time*, so the producer's bursts and the consumer's bad afternoons stop being each other's problem. That single idea — captured when you [placed the sync/async boundary](../foundations/thinking-in-systems.md) — buys four distinct things, and knowing which one you're buying is what separates "we'll add a queue" from a design decision:
+
+1. **Temporal decoupling** — producer and consumer no longer need to be up, fast, or scaled at the same moment. The checkout works while the email service deploys.
+2. **Load leveling** — bursts fill the queue; consumers drain at a *sustainable* rate. The queue converts a 50× traffic spike into a temporarily longer line instead of a cascade.
+3. **A retry substrate** — failure handling moves out of request threads into replayable, backoff-able, dead-letterable machinery.
+4. **Independent scaling units** — consumers scale on *lag*, producers on *traffic*; the queue is the meter between them.
+
+## Queue vs. pub/sub: who gets the message?
+
+**Point-to-point (work queue):** N competing consumers, each message processed by exactly one of them. The contract for *tasks* — resize this image, send this email. **Pub/sub (fan-out):** every subscriber gets every message. The contract for *events* — "order 42 was placed" is interesting to inventory, analytics, fraud, and email *simultaneously*, and the producer shouldn't know or care how many listeners exist ([the decoupling that makes event-driven architecture work](event-driven.md)).
+
+Modern systems blur the line deliberately: [Kafka's consumer groups](kafka.md) give you both at once — within a group, partitions divide work (competing consumers); across groups, every group gets the full stream (fan-out). That duality is half the reason the log model won.
+
+**Broker philosophy** is the other axis: *smart broker* (RabbitMQ — routing keys, per-message acks, TTLs, priorities; the broker does the thinking) vs. *dumb broker, smart consumer* (Kafka — an append-only log; consumers track their own offsets). And the managed middle: **SQS**, whose *visibility timeout* model is worth knowing cold because its edge case is an interview staple — a consumed message isn't deleted, it's *hidden*; if the consumer doesn't delete it within the timeout (crashed? slow?), it **reappears** for redelivery. That's at-least-once delivery mechanically explained in one sentence, and it's why the [idempotency page](delivery-semantics.md) exists.
+
+## Queue dynamics: depth is latency wearing a disguise
+
+[Little's law](../foundations/latency-throughput.md) runs this whole topic: items in queue = arrival rate × wait time, so **queue depth ÷ drain rate = the wait**, and a "healthy" system with a 40-minute backlog is *down* for any latency-sensitive purpose — the requests are technically alive the way a 40-minute line at the DMV is technically service. Consequences worth stating plainly:
+
+- **Unbounded queues are a lie.** Memory or disk bounds them eventually; worse, unboundedness just converts overload into unbounded *latency* plus a deferred explosion. Bounded queues force the honest question at admission time: when full, do we **block** the producer, **shed** the work, or **degrade**? Choosing is design; not choosing is choosing "explode later."
+- **Age beats depth as a metric.** Depth 10,000 might be 4 seconds of work or 4 hours; **age of oldest message** measures the actual promise being broken. Alert on age (and on *lag trend* — is drain rate exceeding arrival rate?), autoscale consumers on it.
+
+**Backpressure** is the general principle behind bounded queues: *a slow consumer's slowness must propagate upstream* — visibly, promptly — or it pools somewhere invisible until that component bursts. The mechanisms are everywhere once you see the pattern: bounded buffers, credit/window-based flow control (TCP's windows, gRPC/HTTP-2 stream flow control, reactive streams), and **pull-based consumption** — the consumer asks when ready, so it can't be overrun. (Kafka consumers pull; [Prometheus scrapes](../devops/index.md); the pattern from [push-vs-pull](../foundations/thinking-in-systems.md) is backpressure's oldest friend.) When someone says "the queue will protect us," the Staff question is: *and what does the producer experience when the queue is full?* If nobody knows, the system's real behavior under overload is "surprise."
+
+## Poison messages and dead-letter queues
+
+One malformed message that crashes its consumer will, under at-least-once redelivery, crash it *forever* — a single poison pill halting a partition or hammering a queue in a retry loop. The standard machinery: **retry with exponential backoff + jitter**, a **max-attempts cap**, then quarantine to a **dead-letter queue** with an alert. The hygiene that separates teams: a *growing* DLQ is silent data loss in progress — it needs a dashboard, an owner, replay tooling (redrive), and a rule that DLQ items are triaged like errors, not archaeology. And when you redrive: **rate-limit the replay** — dumping 50k accumulated messages back into a just-recovered consumer is a self-inflicted [stampede](../caching/failure-modes.md).
+
+## Ordering: the expensive guarantee
+
+Global ordering across a queue is a scalability confession — it means one consumer, one lane, no parallelism ([Amdahl's serial fraction](../foundations/scalability.md) in message form). The honest, scalable contract is **per-key ordering**: all events for *user 42* arrive in order (route by key to one partition/lane), while different users' events interleave freely. That's what [Kafka's key→partition mapping](kafka.md) sells, and it covers nearly every real requirement, because invariants are almost always per-entity.
+
+The fine print: within a partition, ordering means **head-of-line blocking** — one slow/poison message stalls everything behind it *in that lane*. Parallelism vs. ordering is a real dial: more partitions = more parallelism, coarser trouble isolation... and if a consumer needs *cross-key* ordering, redesign the events (sequence numbers, versioned aggregates) rather than serializing the world.
+
+## Work-queue craft (the details that show experience)
+
+- **Long tasks** outlive visibility timeouts/ack deadlines → **heartbeat/extend the lease** while working, or split the task; otherwise the queue redelivers mid-work and you've built a duplicate-work generator.
+- **Priorities**: separate queues per priority class (with dedicated consumer capacity) beats in-queue priority fields — starvation is structural otherwise, and "the free-tier queue is deep" is a fine steady state while the paid queue stays empty.
+- **Delayed/scheduled delivery**: native (SQS delay, RabbitMQ TTL+DLX) or the [Redis sorted-set pattern](../caching/redis.md) (score = run-at time); the substrate of retries-with-backoff and every "send in 24 h" feature — and of the [job scheduler case study](../case-studies/job-scheduler.md).
+- **Message schemas are APIs**: producers and consumers deploy independently, so messages need versioned, additively-evolved schemas ([the same contract discipline as gRPC](../networking/apis.md)) — the queue decouples availability, *not* semantics; a renamed field breaks consumers just as dead asynchronously, only later and more confusingly.
+
+!!! ops "DevOps lens"
+    The async dashboard quartet: **lag/age per consumer group** (the SLO metric), **arrival vs. drain rate** (the trend that predicts the future), **DLQ depth + age** (silent-loss detector), **redelivery/duplicate rate** (visibility-timeout health — a *too-short* timeout at scale manifests as a mysterious duplicate storm: consumers are fine, work is doubling). Incident genres: the *drain-rate collapse* (a downstream dependency slowed; consumers process at 10% speed; lag explodes while consumer CPU looks idle — the bottleneck is *behind* the consumer), the *rebalance/deploy gap* (every consumer restart pauses consumption; frequent deploys = sawtooth lag), the *redrive stampede*, and the *quiet unbounded queue* (nobody alarmed on age; the backlog is now nine hours and the business is asking why emails arrive at midnight). Autoscaling consumers on lag-age with a max bound is the standard pattern — the max bound because [the database behind the consumers](../foundations/scalability.md) has opinions about being drained into at 40× speed.
+
+!!! staff "Staff+ altitude"
+    Markers: (1) **The async boundary is an org boundary** — a queue between teams is a contract with schema governance, versioning policy, and an owner; "we'll just publish events" without those is distributed spaghetti on a delay timer. (2) **Retention is an RTO budget** — a queue that holds 6 hours of peak traffic means downstream can be down 6 hours before data loss; write that number down, size disks for it, and you've converted an incident's panic into arithmetic ([Kafka retention](kafka.md) makes this a first-class dial). (3) **Topology governance** — the "one giant bus everything flows through" pattern couples every team's blast radius; point-to-point queues per relationship isolate but multiply operational surface; most orgs want a governed backbone (shared log, schema registry, quotas) plus purpose-built work queues — and someone at Staff level has to *own* that taxonomy or entropy does. (4) **Overload policy as written design** — for each queue: bounded at what? Then block/shed/degrade — decided, documented, tested; the answer encodes whose work matters most, which is a business decision engineers shouldn't make by default.
+
+!!! interview "In the interview"
+    Every queue in your diagram should be *justified in one sentence*: what user wait does it remove, or what burst does it absorb? ("Email leaves the checkout path — nobody should wait on SMTP" / "Ingest spikes 50×; the queue levels it into the writers.") Then pre-empt the standard probes: **"what if the consumer falls behind?"** — age-based alerting, autoscale on lag, and the honest bound ("retention gives us 6 hours; past that we shed the analytics stream before the transactional one"); **"what about duplicate messages?"** — at-least-once is the contract, [idempotent consumers](delivery-semantics.md) are the answer; **"do you need ordering?"** — per-key via partitioning, never global, with the head-of-line caveat if pushed; **"what if a message is malformed?"** — backoff → max attempts → DLQ → alert → rate-limited redrive. Bonus depth: the *age vs. depth* distinction and the *visibility-timeout duplicate storm* both signal operational scar tissue that reading can't fake.
+
+**Next:** [Kafka deep dive](kafka.md) — what happens when someone takes "the log is the database" completely literally and builds an industry on it.
