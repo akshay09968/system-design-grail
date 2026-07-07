@@ -1,0 +1,53 @@
+# Technology Strategy
+
+Most documents titled "technology strategy" are shopping lists — a parade of initiatives with no connecting logic and nothing declined. Real strategy is the opposite shape: **a diagnosis of the situation, a guiding policy that says no to most things, and a small set of coherent actions** (Rumelt's kernel, which survives translation into engineering perfectly). Strategy's test is whether it makes future decisions *easier*: a good one lets a hundred engineers resolve their next hundred choices without asking you. This page is the working kit: the kernel, the frameworks that recur (tokens, radar, build-vs-buy), the platform play, and the org-scale skill that underwrites all of it — migrations.
+
+## The kernel: diagnosis → policy → actions
+
+Worked, in this site's vocabulary: **Diagnosis** — "we run nine datastores; [each is a permanent line item](../data/nosql.md) of backups, expertise, and 3 a.m. pages; operational load is our real velocity limit" (with [the incident-tax arithmetic](../observability/incidents.md) as evidence — diagnoses need numbers or they're vibes). **Guiding policy** — "consolidate to a blessed few; new stores require a waiver with [named access patterns](../data/nosql.md)." **Coherent actions** — the [paved-road](../caching/failure-modes.md) library, the [migration plan](#migrations-the-org-scale-skill) off the orphans, the waiver process, the [review-gate](architecture-reviews.md) enforcement.
+
+Notice what the policy does: it *declines things*. A strategy that permits everything is a mission statement. The other tell of real strategy: it's falsifiable — "we bet consolidation beats best-tool-per-job at our scale" can turn out wrong, and [the ADR trail](design-docs.md) lets you notice.
+
+## Innovation tokens: spend where you differentiate
+
+Dan McKinley's *Choose Boring Technology* compressed a career of judgment into one metaphor: **an organization gets about three innovation tokens.** Every non-boring choice — the exotic database, the young framework, the bespoke orchestrator — spends one, because novel technology means unknown failure modes, thin hiring pools, and [operational surface](../data/nosql.md) you'll staff forever. Boring ≠ bad: boring means *the failure modes are documented* — [Postgres's sharp edges are known](../data/sql-at-scale.md); the six-month-old streaming engine's are yours to discover in production.
+
+The policy that falls out: spend tokens **only where the business differentiates**. A fintech's token belongs in the [ledger](../case-studies/payments.md), not the message queue; an ML company's in the training platform, not the web framework. And the corollary discipline the site keeps teaching: [the boring-technology thesis](../data/sql-at-scale.md) is a *strategy*, not a lack of ambition — the [KV-store case study's](../case-studies/kv-store.md) "I'd buy unless exceptional needs" confession is token management out loud.
+
+## The tech radar: governance with a heartbeat
+
+The adopt / trial / assess / hold radar (ThoughtWorks' form) works less as a document than as a **ritual**: a quarterly forcing function where the org decides *together* what's blessed, what's on probation, and — the hard quadrant — what's on **hold** (no new usage; existing usage has a [migration destination](#migrations-the-org-scale-skill)). The craft points: keep it small (a radar with 200 blips is a phone book); every *trial* entry names an owner and an exit date (probation without review is adoption by drift); every *hold* entry names the replacement path (hold without a destination is just guilt). The radar is where [review-sensor data](architecture-reviews.md) becomes policy: five teams hand-rolling the same thing → it goes on the radar as a platform candidate.
+
+## Build vs. buy vs. adopt: the full frame
+
+The recurring decision, systematized. Four tests in order:
+
+1. **Differentiation** — is this capability *why customers choose us*? No → strong buy/adopt prior. (The [notification system's](../case-studies/notifications.md) "buy the engine, own the contract" is the pattern: differentiate at the interface, commoditize the implementation.)
+2. **Total cost, with headcount honesty** — the build estimate that omits the *forever* cost (on-call, upgrades, security patching — typically 2–5× the initial build over five years) isn't an estimate, it's a pitch. [The estimation discipline](../foundations/estimation.md) applies to org decisions too.
+3. **Exit cost** — what does leaving cost in three years? [Data gravity](../data/object-storage.md), API coupling, format lock-in. Open formats and owned interfaces ([the lakehouse position](../data/analytics.md)) are exit insurance worth paying small premiums for.
+4. **The scale-flip check** — buy-then-build is a legitimate *sequence*, not indecision: [the SaaS bill crossing self-host cost](../devops/cost-capacity.md) is a predictable curve; strategy is naming the flip point in advance ("we revisit at $X/month or Y volume") rather than discovering it in a budget crisis.
+
+## Platform strategy: leverage as a product
+
+Every [paved-road argument in this site](../caching/failure-modes.md) — the cache client, the resilience defaults, the [pipeline templates](../devops/cicd.md), the [identity scheme](../devops/secrets-identity.md) — is one strategy expressed repeatedly: **encode judgment into defaults, and forty teams inherit it without meetings.** The strategic framing: a platform is a *product whose customers are engineers*, and its adoption must be earned, not mandated — voluntary adoption is the quality signal (an internal platform that needs a decree is failing its market test). The sequencing rule: **platformize on the rule of three** — extract the shared thing after the third team builds it, when the requirements are proven; platform-first speculation builds ivory towers ([the org-design page](org-design.md) covers the team shape). And measure platforms like products: adoption %, time-to-first-deploy on the paved road, [tickets-per-team](org-design.md) — not features shipped.
+
+## Migrations: the org-scale skill
+
+Will Larson's line deserves its fame: **"migrations are the only mechanism to effectively manage technical debt as a company grows."** Every strategy above — consolidation, radar holds, platform adoption — is *executed* as a migration, which makes migration competence the difference between strategy and slideware. The playbook:
+
+1. **Derisk first** — prove the destination on the *hardest* representative case, not the easiest (the easy-case pilot that collapses at case #3 is a genre). This is [canary thinking](../devops/deployments.md) applied to strategy.
+2. **Enable** — make the migration self-serve: tooling, codemods, docs, a [paved path](../caching/failure-modes.md) so each team's cost is hours, not weeks. The migration team's product is *the other teams' ease*.
+3. **Finish** — the actual skill. The last 10% (the weird legacy service, the team with no bandwidth) is where migrations die, and **a 90% migration is often negative value**: two systems, two on-calls, two mental models, forever. Track completion publicly, keep leadership attention on the tail, and staff the finish like it matters — because the payoff only exists at 100%.
+
+The strategic corollary: **never start a migration you can't finish** — each abandoned one spends organizational trust that the next one needs. And its cousin for debt at large: manage tech debt as a portfolio ([deliberate vs. accidental, prudent vs. reckless](../data/sql-at-scale.md)) and pay down where *interest* is highest — the debt in the hot path of change, not the ugly-but-frozen corner nobody touches.
+
+!!! ops "DevOps lens"
+    Ops holds the best strategy inputs in the building — use them as evidence: **the operational-load census** (pages per team per week, [toil percentage](../observability/alerting.md), incident-hours by system — [the incident tax](../observability/incidents.md)) is the diagnosis section of most good infrastructure strategies; "the nine datastores cost us 340 engineer-hours last quarter" beats any architectural aesthetics. **Count the pagers** as the consolidation argument. And own the strategy execution instrument: [deprecation is an operational program](../networking/apis.md) — usage telemetry per client, brownouts, sunset dates — and the migration playbook's *enable* step is pure platform-ops craft. The trap to avoid: strategies written purely from ops pain optimize for quiet pagers over product velocity; pair every load-reduction bet with the [product-facing win](executive-craft.md) it funds, or the business will (correctly) decline it.
+
+!!! staff "Staff+ altitude"
+    Markers: (1) **Write the one-page strategy memo** — kernel-shaped (diagnosis with numbers, policy, first three actions), [BLUF](design-docs.md), circulated to the skeptics *before* the broadcast ([the socialization rule](design-docs.md)); most orgs have zero written technical strategy, so the first person who writes one credibly *becomes* the strategist. (2) **Co-author with your sharpest opponent** — a strategy the influential skeptic helped write needs no selling; a perfect strategy imposed on them needs constant defending. (3) **Sequence bets by reversibility** — lead with the two-way doors (paved roads, defaults) that build credibility; spend it on the one-way doors (the consolidation migration) once you've banked wins. (4) **Review the strategy like an SLO** — quarterly: which predictions held? What does the [radar's](architecture-reviews.md) drift say? A strategy nobody re-examines is a decree; the falsifiability is the point.
+
+!!! interview "In the interview"
+    Principal loops ask for strategy directly — *"tell me about a technical direction you set"* — and the kernel is your narrative spine: *diagnosis* (with the numbers that made it undeniable) → *policy* (what you said no to — interviewers listen for the declined things, because that's what distinguishes strategy from planning) → *actions* → *measured outcome, including what you got wrong*. Hypothetical versions appear too: *"we're spending too much on infrastructure — what do you do?"* wants the diagnosis-first instinct ([unit economics before line items](../devops/cost-capacity.md)), not an immediate list of cuts; *"would you build or buy X?"* wants the four tests run out loud with a named flip point. The token vocabulary lands well used once: *"that's an innovation-token question — and this isn't where we differentiate, so it's a buy."* Said naturally, it signals an entire worldview; said twice, it's a catchphrase.
+
+**Next:** [Engineering org design](org-design.md) — Conway's law wielded on purpose, because you ship your org chart whether you designed it or not.

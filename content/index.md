@@ -22,7 +22,7 @@ Most system design resources teach boxes and arrows. This one teaches boxes, arr
 
 **Refreshing a concept.** Press ++s++ and search. Every page is self-contained: intuition first, then mechanics, then numbers, then trade-offs, then the production failure story.
 
-**Building toward Staff/Principal.** Read one section per week in order — each builds on the last — and treat the purple callouts as your syllabus: they are the altitude layer, distilled. Then the [resources page](reference/resources.md) maps the deeper literature.
+**Building toward Staff/Principal/CTO.** Read one section per week in order — each builds on the last — and treat the purple callouts as your syllabus: they are the altitude layer, distilled. Then [Leadership & Strategy](leadership/index.md) teaches the medium those levels actually work in — docs, reviews, strategy, org design, executive craft — and the [resources page](reference/resources.md) maps the deeper literature.
 
 **Cramming tonight.** Every section index has an *"If you are cramming"* note. Trust them, and end on the [cheat sheets](interviews/cheatsheets.md).
 
@@ -85,7 +85,12 @@ Most system design resources teach boxes and arrows. This one teaches boxes, arr
     ---
     Eleven classics from URL shortener to a Dynamo-style KV store — plus five DevOps specials (metrics, logs, CI/CD, scheduler, flags) where you have home-field advantage.
 
--   **12 · [Reference](reference/index.md)**
+-   **12 · [Leadership & Strategy](leadership/index.md)**
+
+    ---
+    The Staff→Principal→CTO layer: design docs & RFCs, architecture reviews, technology strategy, org design, and executive craft. *The medium changes; this teaches the new one.*
+
+-   **13 · [Reference](reference/index.md)**
 
     ---
     The glossary (every term, linked to its lesson) and the resource list that's actually worth your hours.

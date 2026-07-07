@@ -153,3 +153,14 @@ Every page in the Grail. Tick as you *finish* (read + drilled), not as you skim.
 - [ ] Transfer prompt attempted cold ×2
 - [ ] Mock interview #1
 - [ ] Mock interview #2
+
+### Leadership & Strategy (the Staff→CTO track)
+- [ ] [The path: Senior → CTO](../leadership/the-path.md)
+- [ ] [Design docs, RFCs & ADRs](../leadership/design-docs.md)
+- [ ] [Architecture reviews](../leadership/architecture-reviews.md)
+- [ ] [Technology strategy](../leadership/technology-strategy.md)
+- [ ] [Engineering org design](../leadership/org-design.md)
+- [ ] [Executive craft](../leadership/executive-craft.md)
+- [ ] Three career stories written down (a system, a strategy, an org change) — [why](../leadership/the-path.md)
+- [ ] One design doc written to the [anatomy](../leadership/design-docs.md) (real work, not practice)
+- [ ] One quarterly engineering-health one-pager shipped for your area — [the exercise](../leadership/executive-craft.md)

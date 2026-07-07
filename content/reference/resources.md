@@ -33,6 +33,20 @@ The short list that earns its hours — annotated with *why* and *when*, because
 - **Meta engineering** — cache consistency (the TAO and memcache papers/posts pair with [caching](../caching/index.md)), and MyRocks for [the storage-engine swap story](../data/storage-engines.md).
 - **Incident write-up collections** — public postmortems (Cloudflare's, Google's, GitHub's) are [free chaos-engineering findings](../observability/incidents.md); read one per week and pattern-match against [the failure-modes taxonomy](../distributed/failure-modes.md).
 
+## The leadership shelf
+
+The companion canon for the [Leadership & Strategy section](../leadership/index.md) — read alongside doing the job, not instead of it:
+
+- **Staff Engineer** — Will Larson. The Staff+ role defined: archetypes, getting the title, operating in it. [The path page](../leadership/the-path.md) is the compressed version; this is the field guide. Pair with the free story collection at StaffEng.com.
+- **The Staff Engineer's Path** — Tanya Reilly. The complementary take: the "big picture, execution, leveling up" triad, and the best treatment in print of glue work and cross-team influence.
+- **An Elegant Puzzle** — Will Larson. Engineering management as systems thinking — read it even (especially) as an IC: it's the manual for the machine you're operating inside. The migrations chapter underwrites [the strategy page](../leadership/technology-strategy.md).
+- **Team Topologies** — Skelton & Pais. The org-design vocabulary [this site uses](../leadership/org-design.md): four team types, three interaction modes, cognitive load as the sizing metric.
+- **Accelerate** — Forsgren, Humble & Kim. The research behind the DORA metrics — the evidence that delivery performance predicts business outcomes, i.e., [the executive-craft page's](../leadership/executive-craft.md) footnotes.
+- **Good Strategy / Bad Strategy** — Richard Rumelt. The kernel (diagnosis → policy → action) that [the strategy page](../leadership/technology-strategy.md) borrows; the "bad strategy" chapters are a mirror most tech-strategy docs can't survive.
+- **The Manager's Path** — Camille Fournier. Even staying IC: it's the map of what your managers are supposed to be doing, which is exactly what you need to work with (and around) them at Staff+.
+- **"Choose Boring Technology"** — Dan McKinley (essay, free). Innovation tokens in the original voice; the single most quotable piece of technology strategy ever written.
+- **High Output Management** — Andy Grove. The 1983 book every modern management book is quietly rewriting: leverage, meetings as media, managerial output = output of the org beneath you.
+
 ## Talks
 
 - **"Mastering Chaos — A Netflix Guide to Microservices"** (Josh Evans) — the microservice operational reality in one hour.

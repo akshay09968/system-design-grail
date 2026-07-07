@@ -194,6 +194,14 @@ nav:
       - "DevOps special: CI/CD platform": case-studies/cicd-platform.md
       - "DevOps special: job scheduler": case-studies/job-scheduler.md
       - "DevOps special: feature flags": case-studies/feature-flags.md
+  - Leadership & Strategy:
+      - leadership/index.md
+      - "The path: Senior → CTO": leadership/the-path.md
+      - Design docs, RFCs & ADRs: leadership/design-docs.md
+      - Architecture reviews: leadership/architecture-reviews.md
+      - Technology strategy: leadership/technology-strategy.md
+      - Engineering org design: leadership/org-design.md
+      - Executive craft: leadership/executive-craft.md
   - Reference:
       - reference/index.md
       - Glossary: reference/glossary.md
