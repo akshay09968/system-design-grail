@@ -118,6 +118,7 @@ nav:
       - Distributed transactions: data/distributed-transactions.md
       - Object, block & file storage: data/object-storage.md
       - Analytics & data pipelines: data/analytics.md
+      - Database migrations: data/migrations.md
   - Caching:
       - caching/index.md
       - Caching fundamentals: caching/fundamentals.md
@@ -151,6 +152,7 @@ nav:
       - Secrets & identity: devops/secrets-identity.md
       - Cloud networking: devops/cloud-networking.md
       - Multi-region & DR: devops/multi-region.md
+      - Migrating K8s across clouds: devops/cluster-migration.md
       - Cost & capacity: devops/cost-capacity.md
   - Observability & SRE:
       - observability/index.md

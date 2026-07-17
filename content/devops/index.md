@@ -64,6 +64,11 @@ This is the section nobody else in the candidate pool can match you on — and t
     ---
     RTO/RPO honestly, active-passive vs. active-active, data gravity, and the failover you actually rehearse.
 
+-   **[Migrating K8s across clouds](cluster-migration.md)**
+
+    ---
+    The portability audit, GitOps as the migration engine, traffic cut above both clouds, and the bounded interregnum.
+
 -   **[Cost & capacity](cost-capacity.md)**
 
     ---

@@ -72,6 +72,7 @@ Every page in the Grail. Tick as you *finish* (read + drilled), not as you skim.
 - [ ] [Distributed transactions](../data/distributed-transactions.md)
 - [ ] [Object/block/file storage](../data/object-storage.md)
 - [ ] [Analytics & pipelines](../data/analytics.md)
+- [ ] [Database migrations](../data/migrations.md)
 
 ### Caching
 - [ ] [Fundamentals](../caching/fundamentals.md)
@@ -105,6 +106,7 @@ Every page in the Grail. Tick as you *finish* (read + drilled), not as you skim.
 - [ ] [Secrets & identity](../devops/secrets-identity.md)
 - [ ] [Cloud networking](../devops/cloud-networking.md)
 - [ ] [Multi-region & DR](../devops/multi-region.md)
+- [ ] [Migrating K8s across clouds](../devops/cluster-migration.md)
 - [ ] [Cost & capacity](../devops/cost-capacity.md)
 
 ### Observability & SRE

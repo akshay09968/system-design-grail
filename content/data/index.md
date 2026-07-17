@@ -51,6 +51,11 @@ The section is sequenced from the metal upward: how a single node stores bytes d
     ---
     OLTP vs. OLAP, columnar formats, warehouses vs. lakes, batch vs. streaming, and CDC as the connective tissue.
 
+-   **[Database migrations](migrations.md)**
+
+    ---
+    Replacing the system of record in flight: backfill + CDC, dark reads, the write-freeze math, and rollback that stays alive.
+
 </div>
 
 ## If you are cramming
